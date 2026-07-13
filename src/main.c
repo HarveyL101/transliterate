@@ -23,9 +23,8 @@
 /* --------------- String Buffer --------------- */
 typedef struct
 {
-	const char[] data;
-	size_t size;
-	size_t length;
+	const char[] *contents;
+	long int size;
 } Buffer;
 
 /* --------------- Transliteration Table --------------- */
@@ -64,28 +63,69 @@ static const Rule RULES[] =
 
 #define NUM_RULES (sizeof(RULES) / sizeof(RULES[0]))
 
+char *read_file(const char *path, size_t *output_size)
+{
+	// Reads the contents of the given file and returns a pointer to a temporary string buffer.
+	FILE *file;
+	long int size; // ftell() returns a long int
+	size_t result;
+	char *temp;
+
+	file = fopen(path, "r");
+	if (file == NULL) { fputs("Error reading file.", stderr); exit (1); }
+
+	// Walks to the end of the file and counts its steps, giving the total size of the file (bytes)
+	fseek(file, 0, SEEK_END);
+	size = ftell(file);
+	rewind(file); // Resets the walking position to the start of the file.
+	
+	*output_size = size;
+	printf("File: %s\n\tSize (bytes): %zu", *path, *output_size);
+
+	// Allocate a temporary buffer of (size + 1) to include a null terminator.
+	temp = (char *) malloc(sizeof(char) * size + 1);
+	if (temp == NULL) { fputs("Error allocating to the heap", stderr); exit (2); }
+	buffer[size] = "\0"; 
+
+	// Copy the read contents into the temp buffer.
+	temp = fread(temp, 1, size, file);
+	if (temp != size) { fputs("Error copying file-data into the buffer", stderr); exit (3); }
+
+	fclose(file);
+
+	return temp;
+}
+
 int main(void)
 {
-	FILE *f = fopen("test.txt", "rb");
+	/*
+	 * IDEAS:
+	 * Recursively transliterate everything within the src folder, allowing for larger resources to be compiled 
+	 * and moved as a single grouping of content (think multi-file learning resource with chapters etc.). 
+	 * This would produce an identical file structure in /build. (lookup `file-tree-walk`)
+	 */
+	
+	Buffer buffer;
+	// Test path (relative to the build location
+	char *test_path = "src/test/test.src.md";
 
-	if (!f)
+	// TODO: Read the contents of a given file ending in .src.md, returning a string buffer of its contents.
+	// Points our buffer's contents at the address of the temporary string buffer after read_file does the heavy lifting.
+	buffer->contents = read_file(test_path, &buffer->size);
+	
+	// read_file testing print
+	char *ptr = buffer->contents;
+	while (*ptr != "\0")
 	{
-		perror("fopen failed");
-		return 1;
+		printf("%c", *ptr);
+		ptr++;
 	}
-
-	// Finds the filesize by jumping to the end and measuring distance between that and its startpoint.
-	fseek(f, 0, SEEK_END);
-	long size = ftell(f);
-	rewind(f);
-
-	char *buffer = malloc(size + 1);
-	size_t = got fread(buffer, 1, size, f);
-	buffer[got] = '\0';
-
-	print("Read %zu bytes\n", got);
-	fclose(f);
-	free(buffer);
+	
+	// TODO: Apply transliteration to text proceeding '\ru{'. terminating at the closing '}'.
+	
+	// TODO: Write the transliterated content into build/FILE_NAME.md (touch or fwrite).
+	
+	free(buffer->contents);
 
 	return 0;
 }
