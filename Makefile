@@ -11,3 +11,6 @@ translit:
 
 clean:
 	rm  -f build/*.exe build/*.o
+
+run:
+	./build/$(TARGET)
