@@ -1,0 +1,11 @@
+# Swap files
+src/**/*.swp
+src/**/*.swo
+
+build/**/*.swp
+build/**/*.swp
+
+# Executable and object files
+include/*.o
+build/**/*.o
+build/**/*.exe
