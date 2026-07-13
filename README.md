@@ -1,7 +1,6 @@
 # Transliterate
 
-A simple repo to maintain consistency in my dev environment across devices (Desktop <-> Laptop).
-
+A lightweight transliteration program to embed cyrillic text within markdown files. Geared towards beginners and those not able to use a russian keyboard. Called using `\ru{lorem ipsum}`. 
 ## Aims & Purpose
 
 This software intends to provide a lightweight method of writing in-line cyrillic text, allowing the creation of personal notes or learning resources without having to copy + paste across multiple browser tabs, this would become exhausting in the case of alphabet tables for example.
