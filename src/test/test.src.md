@@ -1,6 +1,6 @@
 # Test File \ru{russkiy}
 
-This is an example test file for the program to ensure all text is parsed appropriately from .src.md -> .md
+This is an example test file for the program to ensure all text is parsed appropriately from `.src.md -> .md`
 
 ## Test Cases \ru{stabil'nyy}
 
