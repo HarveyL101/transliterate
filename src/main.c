@@ -7,11 +7,18 @@
  * *****************************************************************************************
 */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
 
+// Excessive backslashes are caused by the two layers of escaping (C strings & regex escaping)
+#define FIND_RU "\\\\ru\\{([^}]+)\\}"
+
+// Simple macro for finding the number of array items.
+#define NUM_ITEMS(arr) sizeof(arr) / sizeof(arr[0])
+// 
 // TODO: Read the file and echo it back unchanged
 // TODO: Find literal \ru{ occurrences
 // TODO: Transliterate a single word, single letters only 
@@ -21,7 +28,6 @@
 // TODO: Create edge cases and a test file
 
 /* --------------- Transliteration Table --------------- */
-
 // The table is ordered longest-match-first, aiming to prevent single letter matches stealing from multi-letter sounds produced by single characters (E.g. 'zh').
 
 typedef struct
@@ -54,7 +60,6 @@ static const Rule RULES[] =
     	{"'", "ь", "Ь"}, {"\"", "ъ", "Ъ"},
 };
 
-#define NUM_RULES (sizeof(RULES) / sizeof(RULES[0]))
 
 /* --------------- Buffer Functions --------------- */
 
@@ -71,8 +76,8 @@ char *read_file_to_buffer(const char *path, char *buffer)
 		{
 			// Get size of the file
 			bufferSize = ftell(file);
-
 			if (bufferSize == -1) { fputs("File empty or non existent, [buffer size == -1]", stderr); exit(1); }
+			
 			// Allocate new buffer to that size
 			buffer = malloc(sizeof(char) * (bufferSize + 1));
 
@@ -85,6 +90,7 @@ char *read_file_to_buffer(const char *path, char *buffer)
 			if (ferror(file) != 0)
 			{
 				fputs("Error reading file", stderr);
+				exit(3);
 			} else {
 				buffer[newSize++] = '\0';
 			}
@@ -108,15 +114,49 @@ void print_buffer(char *buffer)
 
 /* --------------- Transliteration Functions --------------- */
 
-void transliterate(char *buffer)
+char *transliterate(char *source, char *pattern)
 {
 	/*
 	 * Multi-language catching regex: \\([a-z]{2})\{([^}]+)\}
 	 * E.g. The capture group of \ru{kak dela} is "kak dela".
-	 * While using a regex library is more extensible, a simple parser better fits this use case (russian only). This is open to expansion through minor changes to the function.
+	 * This program will use regular expressions instead of a simple parser, making the program more extensible and open to supporting other language modules in the future.
 	 */
+	regex_t regex; 		// Location of compiled regex
+	unsigned int ret_val;   // Return value of the regex.h function(s)
+	regmatch_t pmatch[1];
+	regoff_t off, len;
+	char *ptr = source;
+
+	// 1. Compile the regex
+	ret_val = regcomp(&regex, pattern, REG_EXTENDED);
 	
-	
+	if (ret_val != 0) { puts("Error compiling regular expression"); exit(4); }
+
+	// 2. Execute it on the buffer's contents (regexec)
+	printf("String = \"%s\"\n", source);
+	printf("Matches:\n");
+
+	for (unsigned int i = 0; ; i++)
+	{
+		if (regexec(&regex, source, NUM_ITEMS(pmatch), pmatch, 0))
+		{
+			break;
+		}
+
+		off = pmatch[0].rm_so + (ptr - source);
+		len = pmatch[0].rm_eo - pmatch[0].rm_so;
+		printf("#%u:\n", i);
+		printf("offset = %jd; length = %jd\n", (intmax_t) off, (intmax_t) len);
+		printf("substring = \"%.*s\"\n", len, ptr  + pmatch[0].rm_so);
+
+		ptr += pmatch[0].rm_eo;
+	}
+
+	// 3. Read the matches (regmatch_t)
+	// 4. Free any used memory (regfree)
+	regfree(&regex);
+
+	return source;
 }
 
 int main(void)
