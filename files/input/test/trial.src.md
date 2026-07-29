@@ -9,3 +9,5 @@ New line, hopefully sets off the github action?
 \ru{Eshchyo odin -Didzhej Khaled}
 
 \ru{I eshchyo odin.}
+
+\ru{I eshchyo odin.}
