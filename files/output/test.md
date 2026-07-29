@@ -1,25 +1,25 @@
-# Test File \ru{russkiy}
+# Test File русскиы
 
 This is an example test file for the program to ensure all text is parsed appropriately from `.src.md -> .md`
 
-## Test Cases \ru{stabil'nyy}
+## Test Cases стабильныы
 
 > 1. A normal tag, no capitalisation.
 > 2. A sentence with back to back tags.
 > 3. A tag using capitalisation (appropriately).
-> 4. A tag which is unclosed (E.g. `\ru{privet`).
+> 4. A tag which is unclosed.
 > 5. A tag with numbers/ punctuation inside.
 > 6. An empty tag containing no text.
 
-1. If someone spoke to you, you may respond with \ru{privet}!
+1. If someone spoke to you, you may respond with привет!
 
-2. Oh, \ru{spasibo} \ru{mnogo} is what you may say to receiving a grand gift from someone.
+2. Oh, спасибо много is what you may say to receiving a grand gift from someone.
 
-3. What is your name? My name is \ru{Boris}.
+3. What is your name? My name is Борис.
 
-4. \ru{dobroye utro means good morning.
+4. доброые утро меанс гоод морнинг.
 
-5. I have \ru{odin (one)} plate and \ru{dva (2)} potatoes. On a table that is very \ru{stabil'nyy}
+5. И хаве \ру{один (оне) plate and два (2) potatoes. On a table that is very стабильныы
 
 6. Boris was stunned, stating that with \ru{}.
 
