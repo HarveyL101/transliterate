@@ -5,11 +5,9 @@ src/**/*.swo
 build/**/*.swp
 build/**/*.swp
 
-input/**/*.swp
-input/**/*.swp
+files/**/*.swp
+files/**/*.swp
 
-output/**/*.swp
-output/**/*.swp
 # Executable and object files
 include/*.o
 build/**/*.o
