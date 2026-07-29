@@ -176,9 +176,32 @@ static char *read_file(const char *path, size_t *output_length)
 	FILE *file = fopen(path, "rb");
 	if (!file) { perror("Could not open the target file\n"); exit(1); }
 
-	fseek(file, 0, SEEK_END);
+	if (fseek(file, 0, SEEK_END) != 0)
+	{
+		perror("Error: fseek()");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
+
 	long size = ftell(file);
+	
+	if (size < 0)
+	{
+		perror("Error: size");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
+
 	rewind(file);
+
+	if (size == -1L)
+	{
+		perror("Error: ftell()");
+		fclose(file);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Reading '%s' (%ld bytes)\n", path, size);
 
 	char *buffer = malloc((size_t)size + 1);
 	if (!buffer) { fputs("Out of memory\n", stderr); exit(1); }
