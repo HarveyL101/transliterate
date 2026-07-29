@@ -5,30 +5,39 @@
  * 	    avoiding tedious copy pasting from browser pages or third party keyboard inputs. 
  * Author: Harvey Lopez
  * *****************************************************************************************
+ *
+ * Process:
+ * 	1. Read a target file (*.src.md) into a heap buffer.
+ * 	2. Pass through the buffer until reaching a `\ru{` call.
+ * 	3. Transliterate each character (Largest match first) using the RULES[] table.
+ * 	4. Append these new characters into a new output buffer, growing as needed.
+ * 	5. Write the finished output buffer into a new file (*.md).
 */
 
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <regex.h>
-
-// Excessive backslashes are caused by the two layers of escaping (C strings & regex escaping)
-#define FIND_RU "\\\\ru\\{([^}]+)\\}"
 
 // Simple macro for finding the number of array items.
 #define NUM_ITEMS(arr) sizeof(arr) / sizeof(arr[0])
-// 
-// TODO: Read the file and echo it back unchanged
-// TODO: Find literal \ru{ occurrences
-// TODO: Transliterate a single word, single letters only 
-// TODO: Extend to digraphs with greedy longest-match
-// TODO: Preserve capitalisation
-// TODO: Combine all stages into one process
-// TODO: Create edge cases and a test file
 
-/* --------------- Transliteration Table --------------- */
-// The table is ordered longest-match-first, aiming to prevent single letter matches stealing from multi-letter sounds produced by single characters (E.g. 'zh').
+/*
+ * Two layers of escaping (\) are needed, one for C strings and another for regex.
+ * The original regex is `\ru\{([^}]+)\}`.
+ *
+ * 	"\ru\{"		Finds literal matches to "\ru{".
+ * 	"([^}]+)"	captures all characters that are not "}".
+ * 	"\}"		Matches the closing "}" of the "\ru{" call.
+ *
+ */
+
+#define FIND_RU "\\\\ru\\{([^}]+)\\}"
+
+/* =====================
+ * Transliteration Table 
+ * ===================== */
 
 typedef struct
 {
@@ -37,6 +46,7 @@ typedef struct
 	const char *uppercase; /* cyrillic replacement, in uppercase */
 } Rule;
 
+// The table is ordered longest-match-first, aiming to prevent single letter matches stealing from multi-letter sounds produced by single characters (E.g. 'zh').
 static const Rule RULES[] =
 {
 	// Four letter matches
@@ -61,129 +71,197 @@ static const Rule RULES[] =
 };
 
 
-/* --------------- Buffer Functions --------------- */
+/* ================
+ * Buffer Functions 
+ * ================ */
+typedef struct {
+	char *data; 
+	size_t length;
+	size_t capacity;
+} Buffer;
 
-char *read_file_to_buffer(const char *path, char *buffer)
+static void buffer_init(Buffer *buf)
 {
-	FILE *file = fopen(path, "r");
-	long bufferSize;
-	size_t newSize;
+	buf->capacity = 64; /* Initial starting size, grows as required. */
+	buf->length = 0;
+	buf->data = malloc(buf->capacity);
 
-	if (file != NULL)
+	if (!buf->data) { fputs("Out of memory\n", stderr); exit(1); }
+	buf->data[0] = '\0';
+}
+
+static void buffer_append(Buffer *buf, const char *src, size_t n)
+{
+	if (buf->length + n + 1 > buf->capacity)
 	{
-		// Go to the end of the file
-		if (fseek(file, 0L, SEEK_END) == 0)
+		size_t new_capacity = buf->capacity;
+		while (buf->length + n + 1 > new_capacity)
 		{
-			// Get size of the file
-			bufferSize = ftell(file);
-			if (bufferSize == -1) { fputs("File empty or non existent, [buffer size == -1]", stderr); exit(1); }
-			
-			// Allocate new buffer to that size
-			buffer = malloc(sizeof(char) * (bufferSize + 1));
-
-			// Return to the start of the file
-			if (fseek(file, 0L, SEEK_SET) != 0) { fputs("Error returning to the start of the file", stderr); exit(2); }
-
-			// Read the file's contents into our memory.
-			newSize = fread(buffer, sizeof(char), bufferSize, file);
-
-			if (ferror(file) != 0)
-			{
-				fputs("Error reading file", stderr);
-				exit(3);
-			} else {
-				buffer[newSize++] = '\0';
-			}
+			new_capacity *= 2;
 		}
-		fclose(file);
-	}
-	printf("File: %s\n\tSize (bytes): %zu", path, newSize);
 
-	return buffer;
+		char *temp = realloc(buf->data, new_capacity);
+
+		if (!temp) { fputs("Out of memory\n", stderr); exit(1); }
+
+		buf->data = temp;
+		buf->capacity = new_capacity;
+	}
+	memcpy(buf->data + buf->length, src, n);
+	buf->length += n;
+	buf->data[buf->length] = '\0';
 }
 
-void print_buffer(char *buffer)
+/* Simple function for convenience when appending an already null-terminated C string. */
+static void buffer_append_str(Buffer *buf, const char *str)
 {
-	char *ptr = buffer;
-	while (*ptr != '\0')
-	{
-		printf("%c", *ptr);
-		ptr++;
-	}
+	buffer_append(buf, str, strlen(str));
 }
 
-/* --------------- Transliteration Functions --------------- */
-
-char *transliterate(char *source, char *pattern)
+/* =========================
+ * Transliteration Functions
+ * ========================= */
+static char *transliterate_word(const char *word, size_t length)
 {
-	/*
-	 * Multi-language catching regex: \\([a-z]{2})\{([^}]+)\}
-	 * E.g. The capture group of \ru{kak dela} is "kak dela".
-	 * This program will use regular expressions instead of a simple parser, making the program more extensible and open to supporting other language modules in the future.
-	 */
-	regex_t regex; 		// Location of compiled regex
-	unsigned int ret_val;   // Return value of the regex.h function(s)
-	regmatch_t pmatch[1];
-	regoff_t off, len;
-	char *ptr = source;
+	Buffer output;
+	buffer_init(&output);
 
-	// 1. Compile the regex
-	ret_val = regcomp(&regex, pattern, REG_EXTENDED);
-	
-	if (ret_val != 0) { puts("Error compiling regular expression"); exit(4); }
-
-	// 2. Execute it on the buffer's contents (regexec)
-	printf("String = \"%s\"\n", source);
-	printf("Matches:\n");
-
-	for (unsigned int i = 0; ; i++)
+	size_t i = 0;
+	while (i < length)
 	{
-		if (regexec(&regex, source, NUM_ITEMS(pmatch), pmatch, 0))
+		int matched = 0;
+
+		/* Since RULES[] is ordered largest char to smallest, 
+		 * greedy matching can be done by scanning top to bottom. */
+		for (size_t rule = 0; rule < NUM_ITEMS(RULES); rule++)
 		{
+			size_t pos_length = strlen(RULES[rule].latin);
+			if (pos_length > length - i) continue; /* Insufficient bytes for a match. */
+
+			int ok = 1;
+			for (size_t k = 0; k < pos_length; k++)
+			{
+				if (tolower((unsigned char)word[i +k]) != RULES[rule].latin[k])
+				{
+					ok = 0;
+					break;
+				}
+			}
+			if (!ok) continue;
+
+			int is_upper = isupper((unsigned char)word[i]);
+			buffer_append_str(&output, is_upper ? RULES[rule].uppercase : RULES[rule].lowercase);
+			i += pos_length;
+			matched = 1;
 			break;
 		}
 
-		off = pmatch[0].rm_so + (ptr - source);
-		len = pmatch[0].rm_eo - pmatch[0].rm_so;
-		printf("#%u:\n", i);
-		printf("offset = %jd; length = %jd\n", (intmax_t) off, (intmax_t) len);
-		printf("substring = \"%.*s\"\n", len, ptr  + pmatch[0].rm_so);
-
-		ptr += pmatch[0].rm_eo;
+		if (!matched)
+		{
+			/* Catches letters unable to be transliterated,
+			 * E.g. numbers, spaces & punctuation. */
+			buffer_append(&output, &word[i], 1);
+			i++;
+		}
 	}
 
-	// 3. Read the matches (regmatch_t)
-	// 4. Free any used memory (regfree)
-	regfree(&regex);
-
-	return source;
+	return output.data; /* The function caller is responsible for freeing this heap memory. */
 }
 
-int main(void)
+/* ===========================
+ * File Manipulation Functions 
+ * =========================== */
+static char *read_file(const char *path, size_t *output_length)
 {
-	/*
-	 * IDEAS:
-	 * Recursively transliterate everything within the src folder, allowing for larger resources to be compiled 
-	 * and moved as a single grouping of content (think multi-file learning resource with chapters etc.). 
-	 * This would produce an identical file structure in /build. (lookup `file-tree-walk`)
-	 */
-	
-	char *buffer;
-	// Test path (relative to the build location
-	char *test_path = "src/test/test.src.md";
+	FILE *file = fopen(path, "rb");
+	if (!file) { perror("Could not open the target file\n"); exit(1); }
 
-	// TODO: Read the contents of a given file ending in .src.md, returning a string buffer of its contents.
-	// Points our buffer's contents at the address of the temporary string buffer after read_file does the heavy lifting.
-	buffer = read_file_to_buffer(test_path, buffer);
-	
-	// read_file testing print
-	print_buffer(buffer);
+	fseek(file, 0, SEEK_END);
+	long size = ftell(file);
+	rewind(file);
 
-	// TODO: Apply transliteration to text proceeding '\ru{'. terminating at the closing '}'.
+	char *buffer = malloc((size_t)size + 1);
+	if (!buffer) { fputs("Out of memory\n", stderr); exit(1); }
+
+	size_t got = fread(buffer, 1, (size_t)size, file);
+	buffer[got] = '\0';
+	fclose(file);
+
+	if (output_length) *output_length = got;
 	
-	// TODO: Write the transliterated content into build/FILE_NAME.md (touch or fwrite).
-	
-	free(buffer);
+	return buffer;
+}
+
+static char *find_and_replace(const char *source, const char *pattern)
+{
+	regex_t regex;
+	/* [0] = whole \ru{...} contents match
+	 * [1] = captured word */
+	regmatch_t pmatch[2];
+
+	if (regcomp(&regex, pattern, REG_EXTENDED) != 0) 
+	{
+		fputs("Failed to compile regex\n", stderr);
+		exit(1);
+	}
+
+	Buffer output;
+	buffer_init(&output);
+
+	const char *cursor = source; /* Sliding pointer to track progress through `source`. */
+
+	while (regexec(&regex, cursor, NUM_ITEMS(pmatch), pmatch, 0) == 0)
+	{
+		/* 1. Everything before the first match is plaintext and should be copied without alteration. */
+		buffer_append(&output, cursor, (size_t)pmatch[0].rm_so);
+
+		/* 2. Find the captured word's start and end using `cursor` and regmatch_t's "start of" / "end of". */
+		const char *word = cursor + pmatch[1].rm_so; /* Word starting point relative to the cursor. */
+		size_t word_length = (size_t)(pmatch[1].rm_eo - pmatch[1].rm_so); 
+		
+		/* 3. Transliterate the found slice and append the result to the output buffer. */
+		char *cyrillic = transliterate_word(word, word_length);
+		buffer_append_str(&output, cyrillic);
+		free(cyrillic); /* Taking responsibility of memory handling since ownership was given by transliterate_word(). */
+		
+		/* 4. Shift cursor past the entire match (including closing brace) to avoid regexec() being stuck in the same \ru{...} call. */
+		cursor += pmatch[0].rm_eo;
+	}
+
+	// Whatever remains after the last match is all plaintext, append to output buffer.
+	buffer_append_str(&output, cursor);
+
+	regfree(&regex);
+	return output.data;
+}
+
+static void write_file(const char *path, const char *data, size_t length)
+{
+	FILE *file = fopen(path, "wb");
+	if (!file) { perror("fopen failed.\n"); exit(1); }
+	fwrite(data, 1, length, file);
+	fclose(file);
+}
+
+int main(int argc, char **argv)
+{
+	if (argc != 3)
+	{
+		fprintf(stderr, "Usage: %s <input.src.md> <output.md>\n", argv[0]);
+		return 1;
+	}
+
+	size_t input_length;
+	char *source = read_file(argv[1], &input_length);
+
+	char *result = find_and_replace(source, FIND_RU);
+
+	write_file(argv[2], result, strlen(result));
+
+	printf("Wrote %s (%zu bytes) from %s (%zu bytes)\n", argv[2], strlen(result), argv[1], input_length);
+
+	free(source);
+	free(result);
 
 	return 0;
 }
