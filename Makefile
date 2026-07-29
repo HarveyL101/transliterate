@@ -15,4 +15,7 @@ clean:
 	rm  -f build/*.exe build/*.o
 
 run:
-	./build/$(TARGET)
+	./$(TARGET)
+
+test:
+	./$(TARGET) src/test/test.src.md output/test.md
