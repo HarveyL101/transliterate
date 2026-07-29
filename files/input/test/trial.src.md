@@ -6,4 +6,6 @@ This is a test for the automated transliteration with github actions.
 
 New line, hopefully sets off the github action?
 
-\ru{eshchyo odin -Didzhej Khaled}
+\ru{Eshchyo odin -Didzhej Khaled}
+
+\ru{I eshchyo odin.}
