@@ -1,0 +1,21 @@
+# .github/workflows/transliterate.yml
+name: Transliterate files
+on: push
+jobs:
+  build:
+    runs-on:
+      - ubuntu-latest
+      - windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make clean && make
+      - run: |
+          while IFS= read -r -d '' file; do
+            relative="${file#files/input/}"
+            output="files/output/${relative%.src.md}.md"
+            mkdir -p "$(dirname "$output")"
+            ./build/transliterate "$file" "$output"
+          done < <(find files/input -name '*.src.md' -print0)
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-transliterate files"
