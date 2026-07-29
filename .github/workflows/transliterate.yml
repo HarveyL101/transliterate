@@ -28,13 +28,12 @@ jobs:
 
       - name: Transliterate files
         run: | 
-        for f in $(find files/input -type f -name "*.src.md"); do
-          output="files/output/${f#files/input/}"
-          output="${output%.src.md}.md"
-          mkdir -p "$(dirname "$output")"
-          ./build/transliterate "$f" "$out"
-        done
-
+          for f in $(find files/input -type f -name "*.src.md"); do
+            out="files/output/${f#files/input/}"
+            out="${out%.src.md}.md"
+            mkdir -p "$(dirname "$out")"
+            ./build/transliterate "$f" "$out"
+          done
       - name: Commit generated files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
