@@ -1,6 +1,6 @@
-#Доброе Утро!
+# Доброе Утро!
 
-This is a test for the automated transliteration with github actions.
+> This is a test for the automated transliteration with github actions.
 
 Ето прекасный день, хочу пива
 
