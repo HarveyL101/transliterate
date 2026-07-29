@@ -14,9 +14,9 @@ jobs:
 
     permissions:
       contents: write
-
+      
     steps:
-      - name: Checkout
+      - name: Checkout 
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,9 +26,14 @@ jobs:
           make clean
           make
 
-      - name: Transliterate notes
-        run: |
-          ./build/transliterate files/input files/output
+      - name: Transliterate files
+        run: | 
+        for file in $(find files/input -type f -name "*.src.md"); do
+          output="files/output/${file#files/input/}"
+          output="${output%.src.md}.md"
+          mkdir -p "$(dirname "$output")"
+          ./build/transliterate "$f" "$out"
+        done
 
       - name: Commit generated files
         uses: stefanzweifel/git-auto-commit-action@v5
