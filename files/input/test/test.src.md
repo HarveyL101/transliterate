@@ -1,8 +1,8 @@
-# Test File \ru{russkiy}
+# Test File \ru{russkij}
 
 This is an example test file for the program to ensure all text is parsed appropriately from `.src.md -> .md`
 
-## Test Cases \ru{stabil'nyy}
+## Test Cases \ru{stabil'nyj}
 
 > 1. A normal tag, no capitalisation.
 > 2. A sentence with back to back tags.
@@ -17,9 +17,9 @@ This is an example test file for the program to ensure all text is parsed approp
 
 3. What is your name? My name is \ru{Boris}.
 
-4. \ru{dobroye utro means good morning.
+4. \ru{dobroe utro means good morning.
 
-5. I have \ru{odin (one)} plate and \ru{dva (2)} potatoes. On a table that is very \ru{stabil'nyy}
+5. I have \ru{odin (one)} plate and \ru{dva (2)} potatoes. On a table that is very \ru{stabil'nyj}
 
 6. Boris was stunned, stating that with \ru{}.
 
