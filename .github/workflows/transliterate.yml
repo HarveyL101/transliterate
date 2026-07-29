@@ -28,8 +28,8 @@ jobs:
 
       - name: Transliterate files
         run: | 
-        for file in $(find files/input -type f -name "*.src.md"); do
-          output="files/output/${file#files/input/}"
+        for f in $(find files/input -type f -name "*.src.md"); do
+          output="files/output/${f#files/input/}"
           output="${output%.src.md}.md"
           mkdir -p "$(dirname "$output")"
           ./build/transliterate "$f" "$out"
