@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wextra -pedantic
 
 SRC = src/main.c
 
-TARGET = build/transliterate.exe
+TARGET = build/transliterate
 
 make:
 	$(CC) $(SRC) $(CFLAGS) -o $(TARGET)

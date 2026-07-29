@@ -28,7 +28,7 @@ jobs:
 
       - name: Transliterate notes
         run: |
-          ./build/transliterate.exe files/input files/output
+          ./build/transliterate files/input files/output
 
       - name: Commit generated files
         uses: stefanzweifel/git-auto-commit-action@v5
